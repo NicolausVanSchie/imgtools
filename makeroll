@@ -1,0 +1,21 @@
+#!/bin/bash
+DELAY=2x30
+FOLDER=frames
+
+rm -rf $FOLDER
+mkdir $FOLDER
+
+convert -coalesce $1 $FOLDER/%03d.png
+
+frames=$(ls -1 $FOLDER | wc -l)
+width=$(convert frames/000.png -format "%w" info:)
+i=0
+for f in $FOLDER/*; do
+	off=$(($i*$width/$frames))
+	convert $f -roll +$off+0 $f # the moving
+	i=$((i+1))
+done
+# make the gif
+convert -delay $DELAY -alpha set -dispose previous -layers Optimize frames/* out.gif
+
+rm -rf $FOLDER
