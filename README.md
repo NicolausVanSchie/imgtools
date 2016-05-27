@@ -12,7 +12,7 @@ A bash script that does the same as above, but with a static image
 Usage: edit settings in file and `./makestaticroll input.png`
 
 ## test.py
-A script that takes an image and "converts" its pixels into a new base. For instance, turning pixels into hexels.
+A script that takes an image and "converts" its pixels into a new base. For instance, turning pixels into hexels. It is very very inefficent, and needs to be rewritten. The script takes about 30s to process a 1080x1920 image.
 
 Example: http://imgur.com/a/lnJtH
 
