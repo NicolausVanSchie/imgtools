@@ -4,76 +4,102 @@ from math import sqrt, floor, sin, cos
 import operator
 import sys
 
-def dot(a,b):
-    return a[0]*b[0]+a[1]*b[1]
+def dot(location,vec):
+    return location[0]*vec[0]+location[1]*vec[1]
 
-def qq(q, l):
-    return floor(q/l)
+def convert_to_thing(vec, location, length):
+    qw = dot(location, vec)
+    floored = floor(qw / length)
+    #print(location[0], location[1], qw, length, floored)
+    return floored
 
-def convert_to_thing(vec, loc, l):
-        qw = dot(loc, vec)
-        return qq(qw, l)
+def get_pixel_group(vecs, location, edge):
+    group = []
+    for vector in vecs[1:]:
+        length = vector[0] * edge
+        va = vector[1]
+        group.append(convert_to_thing(va, location, length))
+    return tuple(group)
 
 def main(argv):
     name = argv[0]
-    lm = 64
-    #vecs = ['hex', (1,(sqrt(3)/2, 1/2)),(1,(-sqrt(3)/2, 1/2)), (1,(0, 1))] # HEXAGONS
-    #vecs = ['dia', (1,(sqrt(3)/2, 1/2)),(1,(-sqrt(3)/2, 1/2))] # Diamonds
-    #vecs = ['pixel', (1, (1, 0)), (1, (0, 1))] # Normal
-    vecs = ['pixel', (10, (1, 0)), (10, (0, 1))] # Normal
-    #vecs = ['squarecross', (1,0), (1/sqrt(2), 1/sqrt(2)), (0, 1)] # SQUARE
-    #ang = 45 /180 *3.14
-    #vecs = ['pixang', (-sin(ang), cos(ang)),(sin(ang), cos(ang))] # DIAG
-    #vecs = ['smear', (cos(ang), sin(ang))] #smear
-    #vecs = ['iso', (1, (1,0)), (sqrt(2), (-1/sqrt(2), 1/sqrt(2))), (sqrt(2), (1/sqrt(2), 1/sqrt(2))), (1, (0, 1))] # isosceles
-    #vecs = ['iso2', (1, (1,0)), (1/sqrt(2), (-1/sqrt(2), 1/sqrt(2))), (1/sqrt(2), (1/sqrt(2), 1/sqrt(2))), (1, (0, 1))] # square diag
-    im = Image.open(name)
-    im = im.convert("RGB")
+    if len(argv) == 1:
+        thing = "normal"
+    else:
+        thing = argv[1]
 
-    x, y = im.size
+    ang = 45 / 180 * 3.14
+    print(['pixel', (1, (1, 0)), (1, (0, 1))]) # Normal
+    
+    if thing == "normal":
+        vecs = ['pixel', (1, (1, 0)), (1, (0, 1))] # Normal
+    elif thing == "diamond":
+        vecs = ['dia', (1, (sqrt(3)/2, 1/2)),(1,(-sqrt(3)/2, 1/2))] # Diamonds
+    elif thing == "hexagon":
+        vecs = ['hex', (1, (sqrt(3)/2, 1/2)),(1,(-sqrt(3)/2, 1/2)), (1,(0, 1))] # HEXAGONS
+    elif thing == "pixel":
+        vecs = ['pixel', (1, (1, 0)), (1, (0, 1))] # Normal
+    elif thing == "square": 
+        vecs = ['squarecross', (1,0), (1/sqrt(2), 1/sqrt(2)), (0, 1)] # SQUARE
+    elif thing == "diagonal":
+        vecs = ['pixang', (1, (-sin(ang), cos(ang))),(1, (sin(ang), cos(ang)))] # DIAG
+    elif thing == "iso":
+        vecs = ['iso', (1, (1,0)), (sqrt(2), (-1/sqrt(2), 1/sqrt(2))), (sqrt(2), (1/sqrt(2), 1/sqrt(2))), (1, (0, 1))] # isosceles
+    elif thing == "iso2":
+        vecs = ['iso2', (1, (1,0)), (1/sqrt(2), (-1/sqrt(2), 1/sqrt(2))), (1/sqrt(2), (1/sqrt(2), 1/sqrt(2))), (1, (0, 1))] # square diag
+    elif thing == "smear":
+        vecs = ['smear', (cos(ang), sin(ang))] #smear
+    else:
+        print("Invalid argument")
+        sys.exit()
+    print(vecs)
+    #sys.exit()
+    sourceImage = Image.open(name)
+    sourceImage = sourceImage.convert("RGB")
 
-    groups = {}
+    width, height = sourceImage.size
+
+    size = min(width, height)
+    edge = round(size / 10)
+
+    colors = {}
     gcurr = {}
 
-    for i in range(x):
-        for j in range(y):
-            loc = (i, j)
-            px = im.getpixel(loc)
-            v2 = []
-            for v in vecs[1:]:
-                l = v[0] *lm
-                va = v[1]
-                v2.append(convert_to_thing(va, loc, l))
-            nl = tuple(v2)
-            if groups.get(nl) is None:
-                groups[nl] = tuple(0 for x in range(len(px)))
-                gcurr[nl] = 0
-            groups[nl] = tuple(groups[nl][x]+px[x]/255 for x in range(len(px)))
-            gcurr[nl] += 1
-    new_group = {}
+    for x in range(width):
+        for y in range(height):
+            location = (x, y)
+            pixel = sourceImage.getpixel(location)
+            group = get_pixel_group(vecs, location, edge)
+            if colors.get(group) is None:
+                colors[group] = tuple(0 for value in range(len(pixel)))
+                gcurr[group] = 0
+            colors[group] = tuple(colors[group][value]+pixel[value]/255 for value in range(len(pixel)))
+            gcurr[group] += 1
+    correctedColors = {}
 
-    for k in groups:
-        new_group[k] = tuple(int(groups[k][x]*255/gcurr[k]) for x in range(len(groups[k])))
+    for k in colors:
+        correctedColors[k] = tuple(int(colors[k][value]*255/gcurr[k]) for value in range(len(colors[k])))
 
-    d = 1
-    l *= d
-    x = int(d*x)
-    y = int(d*y)
+    d = 1 #TODO: Whaaaaat is this? It multiples several things by 1.
+    #length *= d
+    width = int(d * width)
+    height = int(d * height)
 
-    im2 = Image.new("RGB",(x, y))
-    for i in range(x):
-        for j in range(y):
-            loc = (i, j)
-            v2 = []
-            for v in vecs[1:]:
-                l = v[0] *lm
-                va = v[1]
-                v2.append(convert_to_thing(va, loc, l))
-            nl = tuple(v2)
-            col = new_group.get(nl, (127,127,127))
-            im2.putpixel(loc, col)
+    destinationImage = Image.new("RGB",(width, height))
+    for x in range(width):
+        for y in range(height):
+            location = (x, y)
+            group = get_pixel_group(vecs, location, edge)
+            #v2 = []
+            #for vector in vecs[1:]:
+                #length = vector[0] * edge
+                #va = vector[1]
+                #v2.append(convert_to_thing(va, location, length))
+            #nl = tuple(v2)
+            color = correctedColors.get(group, (127,127,127))
+            destinationImage.putpixel(location, color)
     # DOOT
-    im2.save(vecs[0] + "_" + str(lm) + "_" + name)
+    destinationImage.save(vecs[0] + "_" + str(edge) + "_" + name)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
